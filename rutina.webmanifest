@@ -2,7 +2,7 @@
   "name": "Mi Rutina Full Body",
   "short_name": "Mi Rutina",
   "description": "Seguimiento de rutina full body: pesos, repeticiones y progreso",
-  "start_url": "./rutina-progreso.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
