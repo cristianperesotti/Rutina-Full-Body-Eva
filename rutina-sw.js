@@ -1,5 +1,5 @@
 const CACHE = "rutina-v1";
-const FILES = ["./rutina-progreso.html", "./rutina.webmanifest",
+const FILES = ["./index.html", "./rutina.webmanifest",
   "./rutina-icon-192.png", "./rutina-icon-512.png", "./rutina-icon-maskable-512.png"];
 
 self.addEventListener("install", e => {
