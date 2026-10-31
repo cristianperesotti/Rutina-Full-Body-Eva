@@ -1,0 +1,17 @@
+{
+  "name": "Mi Rutina Full Body",
+  "short_name": "Mi Rutina",
+  "description": "Seguimiento de rutina full body: pesos, repeticiones y progreso",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#efe4d3",
+  "theme_color": "#4f1226",
+  "lang": "es",
+  "icons": [
+    {"src": "rutina-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "rutina-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "rutina-icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
