@@ -111,55 +111,104 @@ footer button{background:none;border:0;color:var(--bordo);text-decoration:underl
 </footer>
 
 <script>
-/* ===== Rutina (de la planilla) =====  [nombre, series, repeticiones, unidad] */
+/* ===== Rutina (de la planilla Orion Fitness Club) =====  [nombre, series, repeticiones, unidad] */
+const slug = s => s.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 const PLAN = {
   d1:{name:"Día 1", ex:[
-    ["Sentadilla en Smith",4,"10",""],
-    ["Elevación de cadera en máquina",4,"10-12",""],
-    ["Isquios en camilla",3,"12",""],
-    ["Dorsal al pecho amplio",4,"10-12",""],
-    ["Press plano con mancuernas",3,"10-12",""],
-    ["Vuelo lateral con mancuernas",3,"12-15",""],
-    ["Curl bíceps barra",3,"12",""],
-    ["Tríceps en polea con soga",3,"12-15",""],
-    ["Abdominales cortos",3,"15",""]
+    ["Prensa abierta",4,"12",""],
+    ["Hip thrust de pie",4,"12",""],
+    ["Aducción en máquina",3,"15",""],
+    ["Dorsal al pecho supino",4,"10-12",""],
+    ["Press hammer",3,"10-12",""],
+    ["Tríceps trasnuca soga",3,"12",""],
+    ["Abs soviético",3,"15",""]
   ]},
   d2:{name:"Día 2", ex:[
-    ["Hack",4,"12",""],
-    ["Búlgaras con mancuernas",3,"10","C/P"],
-    ["Peso muerto con mancuernas",4,"10",""],
-    ["Remo bajo neutro",4,"10-12",""],
-    ["Press inclinado con mancuernas",3,"10-12",""],
-    ["Press militar con mancuernas",3,"10-12",""],
-    ["Martillo con mancuernas",3,"12",""],
-    ["Fondos en banco",3,"12",""],
-    ["Plancha",3,"30","seg"]
+    ["Sentadilla sumo",3,"12",""],
+    ["Patada de burro en polea",3,"12","C/P"],
+    ["Isquio de pie en máquina",3,"12","C/P"],
+    ["Remo con barra prono",4,"10",""],
+    ["Vuelo lateral en polea",3,"12","C/L"],
+    ["Curl concentrado",3,"12",""],
+    ["Crunch en polea",3,"15",""]
   ]},
   d3:{name:"Día 3", ex:[
-    ["Camilla de cuádriceps",4,"12-15",""],
-    ["Patada de glúteo",3,"12","C/P"],
-    ["Isquio de pie en máquina",3,"12","C/P"],
-    ["Dorsal alto máquina supino",4,"10-12",""],
-    ["Press hammer",3,"12-15",""],
-    ["Posterior en banco con mancuernas",3,"15",""],
-    ["Curl uni polea",3,"12","C/B"],
-    ["Patada de burro en polea",3,"12","C/B"],
-    ["Bicho muerto",3,"12",""]
+    ["Estocadas caminando",3,"10","C/P"],
+    ["Aducción en polea",3,"12","C/P"],
+    ["Isquios en camilla",3,"12",""],
+    ["Remo T neutro",4,"10-12",""],
+    ["Mariposa",3,"12-15",""],
+    ["Press militar con mancuernas",3,"10",""],
+    ["Abs en máquina",3,"15",""]
   ]}
 };
 const DAYS = ["d1","d2","d3"];
+/* id de cada ejercicio = nombre sin tildes (x[4]); así el historial sigue al ejercicio aunque cambie de día */
+DAYS.forEach(d=>PLAN[d].ex.forEach(x=>{ x[4]=slug(x[0]); }));
+const idOf = (day,i)=>PLAN[day].ex[i][4];
+
+/* Rutina anterior: solo para conservar y migrar el historial */
+const OLD_PLAN = {
+  d1:[
+    ["Sentadilla en Smith",4,"10",""],["Elevación de cadera en máquina",4,"10-12",""],["Isquios en camilla",3,"12",""],
+    ["Dorsal al pecho amplio",4,"10-12",""],["Press plano con mancuernas",3,"10-12",""],["Vuelo lateral con mancuernas",3,"12-15",""],
+    ["Curl bíceps barra",3,"12",""],["Tríceps en polea con soga",3,"12-15",""],["Abdominales cortos",3,"15",""]
+  ],
+  d2:[
+    ["Hack",4,"12",""],["Búlgaras con mancuernas",3,"10","C/P"],["Peso muerto con mancuernas",4,"10",""],
+    ["Remo bajo neutro",4,"10-12",""],["Press inclinado con mancuernas",3,"10-12",""],["Press militar con mancuernas",3,"10-12",""],
+    ["Martillo con mancuernas",3,"12",""],["Fondos en banco",3,"12",""],["Plancha",3,"30","seg"]
+  ],
+  d3:[
+    ["Camilla de cuádriceps",4,"12-15",""],["Patada de glúteo",3,"12","C/P"],["Isquio de pie en máquina",3,"12","C/P"],
+    ["Dorsal alto máquina supino",4,"10-12",""],["Press hammer",3,"12-15",""],["Posterior en banco con mancuernas",3,"15",""],
+    ["Curl uni polea",3,"12","C/B"],["Patada de burro en polea",3,"12","C/B"],["Bicho muerto",3,"12",""]
+  ]
+};
+/* Catálogo de todos los ejercicios (actuales y anteriores) por id */
+const EX = {};
+Object.keys(OLD_PLAN).forEach(d=>OLD_PLAN[d].forEach(x=>{ EX[slug(x[0])]=x; }));
+DAYS.forEach(d=>PLAN[d].ex.forEach(x=>{ EX[x[4]]=x; }));
 
 /* ===== Estado y almacenamiento ===== */
 const KEY = "rutina-progreso-v1";
-let DB = {sessions:{}, body:{}};
-try{ const raw = localStorage.getItem(KEY); if(raw) DB = Object.assign(DB, JSON.parse(raw)); }catch(e){}
+let DB = {v:2, sessions:{}, body:{}, planned:{}};
+
+/* Migra datos viejos (ids "d1-0") a ids por nombre de ejercicio. No pierde nada. */
+function migrate(d){
+  d = d||{};
+  d.sessions = d.sessions||{}; d.body = d.body||{}; d.planned = d.planned||{};
+  if(d.v>=2) return d;
+  Object.keys(d.sessions).forEach(date=>{
+    const dd=d.sessions[date];
+    Object.keys(dd).forEach(day=>{
+      const old=OLD_PLAN[day]; if(!old) return;
+      const nd={};
+      Object.keys(dd[day]).forEach(oid=>{
+        const x=old[+oid.split("-")[1]];
+        nd[x?slug(x[0]):oid]=dd[day][oid];
+      });
+      dd[day]=nd;
+      d.planned[date+"|"+day]=old.reduce((a,x)=>a+x[1],0);
+    });
+  });
+  d.v=2;
+  return d;
+}
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){} }
+try{
+  const raw = localStorage.getItem(KEY);
+  if(raw){
+    const parsed = JSON.parse(raw);
+    if(!(parsed.v>=2)){ try{ localStorage.setItem(KEY+"-backup-pre-v2", raw); }catch(e){} }
+    DB = migrate(parsed); save();
+  }
+}catch(e){}
 
 const pad = n => String(n).padStart(2,"0");
 function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
 function fmt(s){ const p=s.split("-"); return p[2]+"/"+p[1]; }
 function fmtFull(s){ const p=s.split("-"); return p[2]+"/"+p[1]+"/"+p[0]; }
-const exId = (day,i)=>day+"-"+i;
 const num = v => { const n=parseFloat(String(v).replace(",",".")); return isNaN(n)?0:n; };
 
 let tab = "d1";
@@ -172,6 +221,7 @@ function getEntry(date,day,id){ return (DB.sessions[date]&&DB.sessions[date][day
 function ensureEntry(date,day,id){
   DB.sessions[date] = DB.sessions[date]||{};
   DB.sessions[date][day] = DB.sessions[date][day]||{};
+  if(DB.planned[date+"|"+day]==null) DB.planned[date+"|"+day]=plannedSets(day);
   return DB.sessions[date][day][id] = DB.sessions[date][day][id]||{bw:false,w:"",r:[]};
 }
 function cleanup(date,day,id){
@@ -188,21 +238,25 @@ function entryStats(e){
   const w=e.bw?0:num(e.w);
   return {w, bw:e.bw, reps, totalReps, vol:w*totalReps, sets:reps.filter(x=>x>0).length};
 }
-function history(day,id){
+/* Historial de un ejercicio en TODOS los días (sigue al ejercicio si cambia de día) */
+function history(id){
   const out=[];
   Object.keys(DB.sessions).sort().forEach(date=>{
-    const e=getEntry(date,day,id);
-    if(e){ const s=entryStats(e); if(s.totalReps>0||s.w>0) out.push(Object.assign({date},s)); }
+    const dd=DB.sessions[date];
+    Object.keys(dd).forEach(day=>{
+      const e=dd[day][id];
+      if(e){ const s=entryStats(e); if(s.totalReps>0||s.w>0) out.push(Object.assign({date},s)); }
+    });
   });
   return out;
 }
-function previousFor(day,id,date){
-  const h=history(day,id).filter(x=>x.date<date);
+function previousFor(id,date){
+  const h=history(id).filter(x=>x.date<date);
   return h.length?h[h.length-1]:null;
 }
 function plannedSets(day){ return PLAN[day].ex.reduce((a,x)=>a+x[1],0); }
 function doneSets(date,day){
-  let n=0; PLAN[day].ex.forEach((_,i)=>{ const e=getEntry(date,day,exId(day,i)); if(e) n+=e.r.filter(x=>num(x)>0).length; });
+  let n=0; PLAN[day].ex.forEach((_,i)=>{ const e=getEntry(date,day,idOf(day,i)); if(e) n+=e.r.filter(x=>num(x)>0).length; });
   return n;
 }
 
@@ -249,8 +303,8 @@ function renderDay(day){
     <div><div class="row between"><b id="barTxt"></b><span class="small">series completadas</span></div><div class="bar"><i id="barFill"></i></div></div>
   </div></div>`;
   plan.ex.forEach((x,i)=>{
-    const id=exId(day,i), e=getEntry(curDate,day,id)||{bw:false,w:"",r:[]};
-    const prev=previousFor(day,id,curDate);
+    const id=idOf(day,i), e=getEntry(curDate,day,id)||{bw:false,w:"",r:[]};
+    const prev=previousFor(id,curDate);
     let hint="Primera vez: ¡registrá tus números!";
     if(prev){
       const p=(prev.bw?"Peso corporal":prev.w+" kg")+" · "+prev.reps.filter(r=>r>0).join(" / ")+(x[3]==="seg"?" seg":" reps");
@@ -263,7 +317,7 @@ function renderDay(day){
       const v=e.r[s]||"";
       sets+=`<div><span>Serie ${s+1}</span><input class="r${v?" filled":""}" type="number" inputmode="numeric" min="0" data-i="${s}" value="${v}" placeholder="${target}"></div>`;
     }
-    h+=`<div class="card ex" data-day="${day}" data-id="${id}" data-n="${x[1]}">
+    h+=`<div class="card ex" data-day="${day}" data-id="${id}" data-i="${i}" data-n="${x[1]}">
       <div class="row between exhead"><h3>${i+1}. ${x[0]}</h3><div class="right"><span class="badge">${goal}</span><span class="chk">✓</span></div></div>
       <p class="hint">${hint}</p>
       <div class="wrow">
@@ -284,7 +338,7 @@ function updateBar(day){
 }
 const openSet=new Set(), minTimers={};
 function updateCardState(day,i,delay){
-  const id=exId(day,i), key=curDate+"|"+id;
+  const id=idOf(day,i), key=curDate+"|"+id;
   const card=view.querySelector(`.ex[data-id="${id}"]`); if(!card) return;
   const e=getEntry(curDate,day,id);
   const n=+card.dataset.n, done=!!(e&&e.r.filter(x=>num(x)>0).length>=n);
@@ -305,7 +359,7 @@ view.addEventListener("input",ev=>{
   if(t.classList.contains("w")) e.w=t.value;
   if(t.classList.contains("r")){ e.r[+t.dataset.i]=t.value; t.classList.toggle("filled",!!t.value); }
   cleanup(curDate,day,id); save();
-  updateBar(day); updateCardState(day,+id.split("-")[1],1200);
+  updateBar(day); updateCardState(day,+card.dataset.i,1200);
 });
 view.addEventListener("click",ev=>{
   const hd=ev.target.closest(".exhead");
@@ -342,9 +396,14 @@ function renderProg(){
   let opts=`<option value="all"${progSel==="all"?" selected":""}>📊 General (todos los ejercicios)</option>`;
   DAYS.forEach(d=>{
     opts+=`<optgroup label="${PLAN[d].name}">`;
-    PLAN[d].ex.forEach((x,i)=>{ const v=d+"|"+i; opts+=`<option value="${v}"${progSel===v?" selected":""}>${x[0]}</option>`; });
+    PLAN[d].ex.forEach(x=>{ opts+=`<option value="${x[4]}"${progSel===x[4]?" selected":""}>${x[0]}</option>`; });
     opts+="</optgroup>";
   });
+  const curIds=new Set(); DAYS.forEach(d=>PLAN[d].ex.forEach(x=>curIds.add(x[4])));
+  const legacy=Object.keys(EX).filter(id=>!curIds.has(id)&&history(id).length);
+  if(legacy.length){
+    opts+=`<optgroup label="Rutina anterior">`+legacy.map(id=>`<option value="${id}"${progSel===id?" selected":""}>${EX[id][0]}</option>`).join("")+`</optgroup>`;
+  }
   let h=`<h2>Progreso</h2><div class="card"><label class="small">Ver progreso de</label><select id="psel">${opts}</select></div>`;
   h+= progSel==="all" ? progGeneral() : progExercise();
   view.innerHTML=h;
@@ -361,8 +420,9 @@ function delta(a,b){
 }
 
 function progExercise(){
-  const [day,i]=progSel.split("|"); const id=exId(day,i), x=PLAN[day].ex[i];
-  const hist=history(day,id);
+  const id=progSel, x=EX[id];
+  if(!x) return `<div class="card"><div class="empty">Ejercicio no encontrado.</div></div>`;
+  const hist=history(id);
   if(progMetric==="pct") progMetric="w";
   const anyWeight=hist.some(s=>s.w>0);
   if(!anyWeight && progMetric==="w") progMetric="r";
@@ -395,8 +455,8 @@ function progGeneral(){
     DAYS.forEach(d=>{
       const dayObj=DB.sessions[date][d]; if(!dayObj) return;
       let any=false;
-      PLAN[d].ex.forEach((_,i)=>{ const e=dayObj[exId(d,i)]; if(e){ const s=entryStats(e); vol+=s.vol; reps+=s.totalReps; done+=s.sets; if(s.sets) any=true; } });
-      if(any){ days.push(d.replace("d","Día ")); planned+=plannedSets(d); }
+      Object.keys(dayObj).forEach(id=>{ const s=entryStats(dayObj[id]); vol+=s.vol; reps+=s.totalReps; done+=s.sets; if(s.sets) any=true; });
+      if(any){ const pk=DB.planned[date+"|"+d]; days.push(d.replace("d","Día ")); planned+=(pk!=null?pk:plannedSets(d)); }
     });
     if(days.length) rows.push({date,vol,reps,pct:planned?Math.round(done/planned*100):0,days:days.join(", "),done,planned});
   });
@@ -474,7 +534,7 @@ document.getElementById("file").addEventListener("change",e=>{
   r.onload=()=>{ try{
     const d=JSON.parse(r.result);
     if(!d.sessions||!d.body) throw 0;
-    if(confirm("Esto reemplaza los datos actuales por los del respaldo. ¿Continuar?")){ DB=d; save(); render(); }
+    if(confirm("Esto reemplaza los datos actuales por los del respaldo. ¿Continuar?")){ DB=migrate(d); save(); render(); }
   }catch(_){ alert("El archivo no es un respaldo válido."); } };
   r.readAsText(f); e.target.value="";
 });
